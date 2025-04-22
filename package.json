@@ -1,6 +1,6 @@
 {
   "name": "data-mock-builder",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "🧰 A fluent, type-safe mock object generator for test data creation, seeding, and API mocking.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
