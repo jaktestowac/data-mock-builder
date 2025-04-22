@@ -32,7 +32,7 @@ npm install data-mock-builder
 ### Basic Example
 
 ```typescript
-import { MockBuilder } from "mock-builder";
+import { MockBuilder } from "data-mock-builder";
 
 const builder = new MockBuilder().field("id").increment(1).field("name").string("Alice").field("active").boolean(true);
 
@@ -44,7 +44,7 @@ console.log(result);
 Or with compacted field definition:
 
 ```typescript
-import { MockBuilder } from "mock-builder";
+import { MockBuilder } from "data-mock-builder";
 
 const builder = new MockBuilder().field("id", 1).field("name", "Alice").field("active", true);
 
