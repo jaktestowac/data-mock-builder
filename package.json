@@ -1,0 +1,41 @@
+{
+  "name": "data-mock-builder",
+  "version": "1.0.0",
+  "description": "🧰 A fluent, type-safe mock object generator for test data creation, seeding, and API mocking.",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jaktestowac/data-mock-builder.git"
+  },
+  "homepage": "https://github.com/jaktestowac/data-mock-builder",
+  "scripts": {
+    "build": "tsup",
+    "prepare": "tsup",
+    "test": "vitest run",
+    "npm:patch": "npm version patch",
+    "npm:publish": "npm publish --access public"
+  },
+  "keywords": [
+    "mock",
+    "builder",
+    "test-data",
+    "typescript",
+    "mocking",
+    "automation",
+    "faker",
+    "data-generation"
+  ],
+  "author": "jaktestowac.pl",
+  "license": "MIT",
+  "devDependencies": {
+    "tsup": "^7.2.0",
+    "typescript": "^5.3.3",
+    "prettier": "3.5.3",
+    "vitest": "^3.1.2"
+  }
+}
