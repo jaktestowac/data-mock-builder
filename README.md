@@ -22,7 +22,7 @@ A fluent, flexible utility for building mock objects for testing in TypeScript/J
 ## 📦 Install
 
 ```bash
-npm install mock-builder
+npm install data-mock-builder
 ```
 
 ---
