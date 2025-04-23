@@ -56,4 +56,27 @@ describe("MockBuilder - Advanced Usage", () => {
       profile: { city: "Rome" },
     });
   });
+
+  test("should allow mutation of previous build results with deep copy disabled", () => {
+    const builder = new MockBuilder().field("arr").array([1, 2]);
+    const a = builder.build({ deepCopy: false });
+    a.arr.push(3);
+    const b = builder.build({ deepCopy: false });
+    expect(b.arr).toEqual([1, 2, 3]);
+  });
+
+  test("should not mutate previous build results with deep copy enabled", () => {
+    const builder = new MockBuilder().field("arr").array([1, 2]);
+    const a = builder.build();
+    a.arr.push(3);
+    const b = builder.build();
+    expect(b.arr).toEqual([1, 2]);
+  });
+
+  test("should support preset with factory values", () => {
+    MockBuilder.definePreset("factory", { x: () => 123 });
+    const builder = new MockBuilder().preset("factory");
+    const result = builder.build();
+    expect(result).toEqual({ x: 123 });
+  });
 });

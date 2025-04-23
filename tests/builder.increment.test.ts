@@ -64,4 +64,23 @@ describe("MockBuilder - Increment", () => {
       { a: 5, b: 16 },
     ]);
   });
+
+  test("should increment field with negative step", () => {
+    const builder = new MockBuilder().field("n").increment(5, -2).repeat(3);
+    const result = builder.build();
+    expect(result).toEqual([{ n: 5 }, { n: 3 }, { n: 1 }]);
+  });
+
+  test("should increment field with zero step", () => {
+    const builder = new MockBuilder().field("n").increment(7, 0).repeat(2);
+    const result = builder.build();
+    expect(result).toEqual([{ n: 7 }, { n: 7 }]);
+  });
+
+  test("should return empty array if repeat(0) with increment", () => {
+    const builder = new MockBuilder().field("n").increment(1).repeat(0);
+    const result = builder.build();
+    expect(Array.isArray(result)).toBe(true);
+    expect(result).toHaveLength(0);
+  });
 });

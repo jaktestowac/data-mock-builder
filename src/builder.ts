@@ -32,6 +32,20 @@ export class MockBuilder {
   private repeatCount = 1;
   private static presets: Presets = {};
   private deepCopyEnabled = true;
+  private defaultSkipValidation: boolean = true;
+
+  /**
+   * Creates a new MockBuilder instance.
+   * @param options Optional. { deepCopy?: boolean, skipValidation?: boolean }
+   */
+  constructor(options?: { deepCopy?: boolean; skipValidation?: boolean }) {
+    if (options && typeof options.deepCopy === "boolean") {
+      this.deepCopyEnabled = options.deepCopy;
+    }
+    if (options && typeof options.skipValidation === "boolean") {
+      this.defaultSkipValidation = options.skipValidation;
+    }
+  }
 
   /**
    * Enable or disable deep copy of field values in build().
@@ -243,7 +257,9 @@ export class MockBuilder {
    * If repeat() was not called or set to 1, returns a single object.
    * If repeat() was set to n > 1, returns an array of n objects.
    *
-   * @param deepCopyOverride Optional. If set, overrides the builder's deep copy setting for this build.
+   * @param options Optional. Options object:
+   *   - deepCopy: boolean (overrides the builder's deep copy setting for this build)
+   *   - skipValidation: boolean (if true, skips field validation for required fields; default: true)
    * @returns The built object or array of objects, optionally cast to type T.
    *
    * Example:
@@ -253,7 +269,7 @@ export class MockBuilder {
    * const users = builder.repeat(2).build<User[]>();
    * ```
    */
-  build<T = any>(deepCopyOverride?: boolean): T {
+  build<T extends object = any>(options?: { deepCopy?: boolean; skipValidation?: boolean }): T {
     // Helper to deep clone objects/arrays to avoid mutation between builds
     function deepClone<V>(value: V): V {
       if (Array.isArray(value)) {
@@ -281,7 +297,8 @@ export class MockBuilder {
       return value;
     }
 
-    const useDeepCopy = typeof deepCopyOverride === "boolean" ? deepCopyOverride : this.deepCopyEnabled;
+    const useDeepCopy = typeof options?.deepCopy === "boolean" ? options.deepCopy : this.deepCopyEnabled;
+    const skipValidation = options?.skipValidation === undefined ? this.defaultSkipValidation : options.skipValidation;
 
     const createOne = () => {
       const obj: Record<string, any> = {};
@@ -292,10 +309,39 @@ export class MockBuilder {
       return obj;
     };
 
-    if (this.repeatCount === 1) {
-      return createOne() as T;
+    // --- Validation helper ---
+    function validateFields<U>(obj: any, typeKeys: string[]) {
+      for (const key of typeKeys) {
+        if (!(key in obj)) {
+          throw new Error(`Missing field "${key}" in built object.`);
+        }
+      }
     }
 
-    return Array.from({ length: this.repeatCount }, createOne) as T;
+    // --- Get type keys if T is not 'any' ---
+    function getTypeKeys<V extends object>(): string[] {
+      // This hack uses a dummy object to extract keys at runtime if T is not 'any'
+      // At runtime, T is erased, so this only works if user passes a value as a type argument
+      // Otherwise, returns empty array (no validation)
+      return (Object.keys({} as V) as string[]) || [];
+    }
+
+    const typeKeys = getTypeKeys<T>();
+
+    if (this.repeatCount === 1) {
+      const obj = createOne();
+      if (!skipValidation && typeKeys.length > 0) {
+        validateFields(obj, typeKeys);
+      }
+      return obj as T;
+    }
+
+    const arr = Array.from({ length: this.repeatCount }, createOne) as T;
+    if (!skipValidation && typeKeys.length > 0 && Array.isArray(arr)) {
+      for (const obj of arr as any[]) {
+        validateFields(obj, typeKeys);
+      }
+    }
+    return arr;
   }
 }

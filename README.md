@@ -16,6 +16,7 @@ A fluent, flexible utility for building mock objects for testing in TypeScript/J
 - 🪄 TypeScript support with type casting for results
 - 🪶 Zero dependencies
 - 🛡️ Optional deep copy to prevent mutation between builds
+- 🛡️ Optional field validation (see `.build()` options)
 
 ---
 
@@ -194,7 +195,7 @@ const users = builder.repeat(2).build<User[]>();
 
 ---
 
-### 🛡️ Deep Copy Control
+### 🛡️ Deep Copy and Field Validation Control
 
 By default, the builder deep-copies all field values to prevent mutation between builds.  
 You can disable deep copy globally or per build:
@@ -216,9 +217,35 @@ const d = builder.build();
 console.log(d.arr); // [1, 2, 4]
 
 // Or disable/enable deep copy per build:
-const e = builder.build(true); // deep copy ON for this build
-const f = builder.build(false); // deep copy OFF for this build
+const e = builder.build({ deepCopy: true }); // deep copy ON for this build
+const f = builder.build({ deepCopy: false }); // deep copy OFF for this build
 ```
+
+#### Field Validation
+
+By default, field validation is **skipped** for performance and compatibility.  
+If you want to validate that all fields required by a type are present in the built object, use:
+
+```typescript
+interface User {
+  id: number;
+  name: string;
+}
+
+const builder = new MockBuilder().field("id").number(1);
+// This will NOT throw by default:
+const user = builder.build<User>();
+
+// To enable runtime validation:
+try {
+  builder.build<User>({ skipValidation: false }); // Throws if any required field is missing
+} catch (err) {
+  console.error(err);
+}
+```
+
+> **Note:** Due to TypeScript type erasure, runtime validation only works for plain objects, not for arrays of objects (e.g., `User[]`).  
+> For most use cases, type safety is enforced at compile time.
 
 ---
 
@@ -231,7 +258,7 @@ const f = builder.build(false); // deep copy OFF for this build
 | `.repeat(n)`                      | Generate `n` objects (returns an array from `.build()`).                                                               |
 | `.extend(template)`               | Add fields from a plain object.                                                                                        |
 | `.preset(name)`                   | Add fields from a named preset (see `.definePreset`).                                                                  |
-| `.build<T>(deepCopy?)`            | Build the object(s), optionally cast to type `T`. Optionally override deep copy for this build.                        |
+| `.build<T>(options?)`             | Build the object(s), optionally cast to type `T`. Options: `{ deepCopy?: boolean; skipValidation?: boolean }`          |
 | `.deepCopy(enabled)`              | Enable or disable deep copy for all subsequent builds from this builder.                                               |
 | `.increment(start = 1, step = 1)` | Incrementing number field.                                                                                             |
 | `.definePreset(name, template)`   | Define a reusable preset.                                                                                              |

@@ -31,4 +31,23 @@ describe("MockBuilder - Repeat & Arrays", () => {
       { id: 3, static: 42 },
     ]);
   });
+
+  test("should return empty array if repeat(0)", () => {
+    const builder = new MockBuilder().field("x").number(1).repeat(0);
+    const result = builder.build();
+    expect(Array.isArray(result)).toBe(true);
+    expect(result).toHaveLength(0);
+  });
+
+  test("should return single object if repeat(1)", () => {
+    const builder = new MockBuilder().field("x").number(1).repeat(1);
+    const result = builder.build();
+    expect(result).toEqual({ x: 1 });
+  });
+
+  test("should allow repeat after fields", () => {
+    const builder = new MockBuilder().field("a").number(1).repeat(2);
+    const result = builder.build();
+    expect(result).toEqual([{ a: 1 }, { a: 1 }]);
+  });
 });

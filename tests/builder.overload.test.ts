@@ -106,4 +106,16 @@ describe("MockBuilder - Field Overload", () => {
     // Assert
     expect(result).toEqual({ nullable: null });
   });
+
+  test("should override field with different types", () => {
+    const builder = new MockBuilder().field("x", "a").field("x", 2);
+    const result = builder.build();
+    expect(result).toEqual({ x: 2 });
+  });
+
+  test("should override field multiple times", () => {
+    const builder = new MockBuilder().field("x", 1).field("x", 2).field("x", 3);
+    const result = builder.build();
+    expect(result).toEqual({ x: 3 });
+  });
 });

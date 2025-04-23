@@ -258,9 +258,9 @@ describe("MockBuilder - Edge Cases", () => {
     // Arrange
     const builder = new MockBuilder().field("arr").array([1, 2]);
     // Act
-    const a = builder.build(false);
+    const a = builder.build({ deepCopy: false });
     a.arr.push(3);
-    const b = builder.build(false);
+    const b = builder.build({ deepCopy: false });
     // Assert
     expect(b.arr).toEqual([1, 2, 3]);
   });
@@ -269,9 +269,9 @@ describe("MockBuilder - Edge Cases", () => {
     // Arrange
     const builder = new MockBuilder().deepCopy(false).field("arr").array([1, 2]);
     // Act
-    const a = builder.build(true);
+    const a = builder.build({ deepCopy: true });
     a.arr.push(3);
-    const b = builder.build(true);
+    const b = builder.build({ deepCopy: true });
     // Assert
     expect(b.arr).toEqual([1, 2]);
   });
