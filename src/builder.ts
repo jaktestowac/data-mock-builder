@@ -11,6 +11,8 @@ interface FieldDefinition<T> {
   validator?: FieldValidator;
 }
 
+type Presets = Record<string, Record<string, any>>;
+
 /**
  * MockBuilder provides a fluent API to construct mock objects for testing purposes.
  *
