@@ -2,9 +2,13 @@ type ValueOrFactory<T> =
   | T
   | ((obj?: any, index?: number, options?: { deepCopy?: boolean; skipValidation?: boolean }) => T);
 
+// Add type definition for field validator
+type FieldValidator = (value: any, fieldName: string) => { success: boolean; errorMsg?: string };
+
 interface FieldDefinition<T> {
   name: string;
   generator: (obj?: any, index?: number, options?: { deepCopy?: boolean; skipValidation?: boolean }) => T;
+  validator?: FieldValidator;
 }
 
 /**
@@ -33,10 +37,11 @@ export class MockBuilder {
   private static presets: Presets = {};
   private deepCopyEnabled = true;
   private defaultSkipValidation: boolean = true;
+  private currentFieldName: string | null = null; // Track the current field being defined
 
   /**
    * Creates a new MockBuilder instance.
-   * @param options Optional. { deepCopy?: boolean, skipValidation?: boolean }
+   * @param options Optional. { deepCopy?: boolean; skipValidation?: boolean }
    */
   constructor(options?: { deepCopy?: boolean; skipValidation?: boolean }) {
     if (options && typeof options.deepCopy === "boolean") {
@@ -81,6 +86,15 @@ export class MockBuilder {
      * @returns The builder instance for chaining.
      */
     increment: (start?: number, step?: number) => MockBuilder;
+    /**
+     * Sets a field validator function that will be used to validate the field's value
+     * during build.
+     *
+     * @param validator A function that validates the field value.
+     *                  Should return an object with { success: boolean, errorMsg?: string }.
+     * @returns The builder instance for chaining.
+     */
+    validator: (validator: FieldValidator) => MockBuilder;
   };
   field<T>(name: string, value: ValueOrFactory<T>): MockBuilder;
   field<T>(
@@ -95,10 +109,14 @@ export class MockBuilder {
         array: <T = any>(val: ValueOrFactory<T[]>) => MockBuilder;
         object: <T = Record<string, any>>(val: ValueOrFactory<T>) => MockBuilder;
         increment: (start?: number, step?: number) => MockBuilder;
+        validator: (validator: FieldValidator) => MockBuilder;
       } {
     if (arguments.length === 2) {
       return this.addField(name, value as ValueOrFactory<T>);
     }
+
+    this.currentFieldName = name; // Store the field name for validator association
+
     return {
       /**
        * Sets a string value or generator for the field.
@@ -152,7 +170,30 @@ export class MockBuilder {
           return val;
         });
       },
+      validator: (validator: FieldValidator) => {
+        if (!this.currentFieldName) {
+          throw new Error("validator() must be called after defining a field");
+        }
+        return this.addValidator(this.currentFieldName, validator);
+      },
     };
+  }
+
+  /**
+   * Adds a validator to the last defined field.
+   *
+   * @param name The field name.
+   * @param validator The validator function.
+   * @returns The builder instance for chaining.
+   * @private
+   */
+  private addValidator(name: string, validator: FieldValidator) {
+    const fieldIndex = this.fields.findIndex((field) => field.name === name);
+    if (fieldIndex === -1) {
+      throw new Error(`Cannot add validator: field '${name}' not found.`);
+    }
+    this.fields[fieldIndex].validator = validator;
+    return this;
   }
 
   /**
@@ -170,6 +211,7 @@ export class MockBuilder {
             (val as Function)(obj, index, options)
         : () => val;
     this.fields.push({ name, generator });
+    this.currentFieldName = name; // Update the current field name
     return this;
   }
 
@@ -257,6 +299,33 @@ export class MockBuilder {
   }
 
   /**
+   * Sets a custom validator for a field.
+   * The validator function should return an object with { success: boolean, errorMsg?: string }.
+   *
+   * @param fieldName The name of the field to validate.
+   * @param validator The validator function.
+   * @returns The builder instance for chaining.
+   *
+   * Example:
+   * ```
+   * builder
+   *   .field("age").number(25)
+   *   .validator("age", (value) => ({
+   *     success: value >= 18,
+   *     errorMsg: value >= 18 ? undefined : "Age must be at least 18"
+   *   }))
+   *   .field("email").string("user@example.com")
+   *   .validator("email", (value) => ({
+   *     success: /^.+@.+\..+$/.test(value),
+   *     errorMsg: /^.+@.+\..+$/.test(value) ? undefined : "Invalid email format"
+   *   }));
+   * ```
+   */
+  validator(fieldName: string, validator: FieldValidator) {
+    return this.addValidator(fieldName, validator);
+  }
+
+  /**
    * Builds the mock object(s) according to the defined fields and repeat count.
    * If repeat() was not called or set to 1, returns a single object.
    * If repeat() was set to n > 1, returns an array of n objects.
@@ -273,7 +342,7 @@ export class MockBuilder {
    * const users = builder.repeat(2).build<User[]>();
    * ```
    */
-  build<T extends object = any>(options?: { deepCopy?: boolean; skipValidation?: boolean } = {}): T {
+  build<T extends object = any>(options: { deepCopy?: boolean; skipValidation?: boolean } = {}): T {
     // Helper to deep clone objects/arrays to avoid mutation between builds
     function deepClone<V>(value: V): V {
       if (Array.isArray(value)) {
@@ -301,18 +370,34 @@ export class MockBuilder {
       return value;
     }
 
-    const useDeepCopy = typeof options?.deepCopy === "boolean" ? options.deepCopy : this.deepCopyEnabled;
-    const skipValidation = options?.skipValidation === undefined ? this.defaultSkipValidation : options.skipValidation;
+    const useDeepCopy = typeof options.deepCopy === "boolean" ? options.deepCopy : this.deepCopyEnabled;
+    const skipValidation = options.skipValidation === undefined ? this.defaultSkipValidation : options.skipValidation;
 
     options.deepCopy = useDeepCopy;
     options.skipValidation = skipValidation;
 
     const createOne = (index?: number) => {
       const obj: Record<string, any> = {};
-      for (const { name, generator } of this.fields) {
+      const validationErrors: string[] = [];
+
+      for (const { name, generator, validator } of this.fields) {
         const val = generator(obj, index, options);
         obj[name] = useDeepCopy ? deepClone(val) : val;
+
+        // Run field validator if present and validation is not skipped
+        if (!skipValidation && validator) {
+          const validationResult = validator(obj[name], name);
+          if (!validationResult.success) {
+            validationErrors.push(validationResult.errorMsg || `Validation failed for field "${name}"`);
+          }
+        }
       }
+
+      // If validation errors occurred, throw an error with all messages
+      if (validationErrors.length > 0 && !skipValidation) {
+        throw new Error(`Validation errors:\n${validationErrors.join("\n")}`);
+      }
+
       return obj;
     };
 

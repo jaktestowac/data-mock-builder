@@ -17,6 +17,7 @@ A fluent, flexible utility for building mock objects for testing in TypeScript/J
 - 🪶 Zero dependencies
 - 🛡️ Optional deep copy to prevent mutation between builds
 - 🛡️ Optional field validation (see `.build()` options)
+- ✅ Custom field validators to ensure data integrity
 
 ---
 
@@ -208,6 +209,42 @@ console.log(users);
 
 ---
 
+### Custom Field Validation
+
+```typescript
+const builder = new MockBuilder()
+  .field("age")
+  .number(25)
+  // Add validator using standalone method
+  .validator("age", (value) => ({
+    success: value >= 18,
+    errorMsg: "Age must be at least 18",
+  }))
+  .field("email")
+  .string("user@example.com")
+  // Add validator by chaining after field definition
+  .field("username")
+  .string("user123")
+  .validator((value) => ({
+    success: value.length >= 5,
+    errorMsg: "Username must be at least 5 characters",
+  }));
+
+// By default, validation is skipped for performance
+const user1 = builder.build();
+
+// Enable validation by setting skipValidation to false
+try {
+  // This would throw if any validation fails
+  const user2 = builder.build({ skipValidation: false });
+  console.log("All validations passed!");
+} catch (error) {
+  console.error(error.message); // Contains all validation error messages
+}
+```
+
+---
+
 ### 🪄 TypeScript Type Casting
 
 You can cast the result of `.build()` to your interface or type for full type safety:
@@ -290,6 +327,7 @@ try {
 | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `.field(name)`                    | Start defining a field. Chain with `.string()`, `.number()`, `.boolean()`, `.array()`, `.object()`, or `.increment()`. |
 | `.field(name, value)`             | Add a field directly with a static value or factory function.                                                          |
+| `.validator(name, fn)`            | Add a validator function for a field. Can return true or an error message string.                                      |
 | `.repeat(n)`                      | Generate `n` objects (returns an array from `.build()`).                                                               |
 | `.extend(template)`               | Add fields from a plain object.                                                                                        |
 | `.preset(name)`                   | Add fields from a named preset (see `.definePreset`).                                                                  |
