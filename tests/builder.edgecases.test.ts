@@ -312,4 +312,54 @@ describe("MockBuilder - Edge Cases", () => {
     // This test documents the current behavior.
     expect(result.f).toBe(42);
   });
+
+  test("should handle complex nested objects with deepCopy", () => {
+    // Arrange
+    const complexObj = {
+      level1: {
+        level2: {
+          level3: {
+            array: [1, 2, { nested: "value" }],
+          },
+        },
+      },
+    };
+    const builder = new MockBuilder().field("complex", complexObj);
+
+    // Act
+    const result1 = builder.build();
+    result1.complex.level1.level2.level3.array[2].nested = "changed";
+    const result2 = builder.build();
+
+    // Assert
+    expect(result2.complex.level1.level2.level3.array[2].nested).toBe("value");
+  });
+
+  test("should allow changing deepCopy setting at different points in the chain", () => {
+    // Arrange
+    const builder = new MockBuilder().field("arr", [1, 2]).deepCopy(false).field("obj", { a: 3 });
+
+    // Act
+    const result1 = builder.build();
+    result1.arr.push(3);
+    result1.obj.a = 4;
+
+    const result2 = builder.build();
+
+    // Assert
+    expect(result2.arr).toEqual([1, 2, 3]);
+    expect(result2.obj.a).toBe(4);
+
+    // Switch back to deep copy
+    builder.deepCopy(true);
+    const result3 = builder.build();
+    result3.arr.push(5);
+    result3.obj.a = 6;
+
+    const result4 = builder.build();
+
+    // Assert
+    expect(result4.arr).toEqual([1, 2, 3]);
+    expect(result4.obj.a).toBe(4);
+  });
 });

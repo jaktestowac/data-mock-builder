@@ -179,4 +179,67 @@ describe("MockBuilder - README Examples", () => {
       expect(f.arr).toEqual([1, 2, 4]); // Not including 5 from e which had deep copy ON
     });
   });
+
+  describe("Advanced Generator Usage", () => {
+    test("should access object, index, and options in generator functions", () => {
+      const builder = new MockBuilder()
+        .field("id")
+        .increment(1)
+        .field("name")
+        .string("User")
+        // Access index parameter in generator function
+        .field("displayName", (obj, index) => `${obj.name} ${index || 0}`)
+        // Access current object and control deep copy
+        .field("summary", (obj, index, options) => {
+          return `ID: ${obj.id}, Name: ${obj.displayName}, Deep Copy: ${options?.deepCopy}`;
+        });
+
+      const users = builder.repeat(2).build();
+
+      expect(users).toEqual([
+        {
+          id: 1,
+          name: "User",
+          displayName: "User 0",
+          summary: "ID: 1, Name: User 0, Deep Copy: true",
+        },
+        {
+          id: 2,
+          name: "User",
+          displayName: "User 1",
+          summary: "ID: 2, Name: User 1, Deep Copy: true",
+        },
+      ]);
+    });
+    test("should access object, index, and options in generator functions", () => {
+      const builder = new MockBuilder()
+        .field("id")
+        .increment(1)
+        .field("name")
+        .string("User")
+        // Access index parameter in generator function
+        .field("displayName", (obj, index) => `${obj.name} ${index || 0}`)
+        // Access current object and control deep copy
+        .field("summary", (obj, index, options) => {
+          return `ID: ${obj.id}, Name: ${obj.displayName}, Deep Copy: ${options?.deepCopy}`;
+        });
+
+      const users = builder.repeat(2).build({ deepCopy: false });
+
+      expect(users).toEqual([
+        {
+          id: 1,
+          name: "User",
+          displayName: "User 0",
+          summary: "ID: 1, Name: User 0, Deep Copy: false",
+        },
+        {
+          id: 2,
+          name: "User",
+          displayName: "User 1",
+          summary: "ID: 2, Name: User 1, Deep Copy: false",
+        },
+      ]);
+    });
+  });
 });

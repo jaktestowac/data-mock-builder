@@ -171,6 +171,41 @@ console.log(result);
 // [{ n: 0 }, { n: 5 }, { n: 10 }]
 ```
 
+### Advanced Generator Usage
+
+```typescript
+const builder = new MockBuilder()
+  .field("id")
+  .increment(1)
+  .field("name")
+  .string("User")
+  // Access index parameter in generator function
+  .field("displayName", (obj, index) => `${obj.name} ${index || 0}`)
+  // Access current object and control deep copy
+  .field("summary", (obj, index, options) => {
+    // options.deepCopy controls whether the returned value is deep copied
+    // options.skipValidation provides validation setting
+    return `ID: ${obj.id}, Name: ${obj.displayName}, Deep Copy: ${options?.deepCopy}`;
+  });
+
+const users = builder.repeat(2).build();
+console.log(users);
+// [
+//   {
+//     id: 1,
+//     name: "User",
+//     displayName: "User 0",
+//     summary: "ID: 1, Name: User 0, Deep Copy: true"
+//   },
+//   {
+//     id: 2,
+//     name: "User",
+//     displayName: "User 1",
+//     summary: "ID: 2, Name: User 1, Deep Copy: true"
+//   }
+// ]
+```
+
 ---
 
 ### 🪄 TypeScript Type Casting

@@ -1,11 +1,11 @@
-type ValueOrFactory<T> = T | (() => T);
+type ValueOrFactory<T> =
+  | T
+  | ((obj?: any, index?: number, options?: { deepCopy?: boolean; skipValidation?: boolean }) => T);
 
 interface FieldDefinition<T> {
   name: string;
-  generator: () => T;
+  generator: (obj?: any, index?: number, options?: { deepCopy?: boolean; skipValidation?: boolean }) => T;
 }
-
-type Presets = Record<string, Record<string, any>>;
 
 /**
  * MockBuilder provides a fluent API to construct mock objects for testing purposes.
@@ -164,7 +164,11 @@ export class MockBuilder {
    * @private
    */
   private addField<T>(name: string, val: ValueOrFactory<T>) {
-    const generator = typeof val === "function" ? (val as () => T) : () => val;
+    const generator =
+      typeof val === "function"
+        ? (obj?: any, index?: number, options?: { deepCopy?: boolean; skipValidation?: boolean }) =>
+            (val as Function)(obj, index, options)
+        : () => val;
     this.fields.push({ name, generator });
     return this;
   }
@@ -269,7 +273,7 @@ export class MockBuilder {
    * const users = builder.repeat(2).build<User[]>();
    * ```
    */
-  build<T extends object = any>(options?: { deepCopy?: boolean; skipValidation?: boolean }): T {
+  build<T extends object = any>(options?: { deepCopy?: boolean; skipValidation?: boolean } = {}): T {
     // Helper to deep clone objects/arrays to avoid mutation between builds
     function deepClone<V>(value: V): V {
       if (Array.isArray(value)) {
@@ -300,10 +304,13 @@ export class MockBuilder {
     const useDeepCopy = typeof options?.deepCopy === "boolean" ? options.deepCopy : this.deepCopyEnabled;
     const skipValidation = options?.skipValidation === undefined ? this.defaultSkipValidation : options.skipValidation;
 
-    const createOne = () => {
+    options.deepCopy = useDeepCopy;
+    options.skipValidation = skipValidation;
+
+    const createOne = (index?: number) => {
       const obj: Record<string, any> = {};
       for (const { name, generator } of this.fields) {
-        const val = generator();
+        const val = generator(obj, index, options);
         obj[name] = useDeepCopy ? deepClone(val) : val;
       }
       return obj;
@@ -336,7 +343,7 @@ export class MockBuilder {
       return obj as T;
     }
 
-    const arr = Array.from({ length: this.repeatCount }, createOne) as T;
+    const arr = Array.from({ length: this.repeatCount }, (_, index) => createOne(index)) as T;
     if (!skipValidation && typeKeys.length > 0 && Array.isArray(arr)) {
       for (const obj of arr as any[]) {
         validateFields(obj, typeKeys);
